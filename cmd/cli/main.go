@@ -81,21 +81,17 @@ func init() {
 }
 
 func loadConfig() error {
-	// Set up viper
 	viper.SetConfigFile(configPath)
-	viper.SetConfigType("env") // Config file is in environment variable format
+	viper.SetConfigType("env")
 
-	// Try to read config file
 	if err := viper.ReadInConfig(); err != nil {
 		return fmt.Errorf("error reading config file: %w", err)
 	}
 
-	// Unmarshal config
 	if err := viper.Unmarshal(&config); err != nil {
 		return fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
-	// Verify required config values
 	if config.LLMAPIURL == "" {
 		return fmt.Errorf("LLM_API_URL is required in config")
 	}
@@ -103,8 +99,7 @@ func loadConfig() error {
 		return fmt.Errorf("LLM_API_KEY is required in config")
 	}
 	if config.Model == "" {
-		// Default to GPT-4 if not specified
-		config.Model = "gpt-4"
+		return fmt.Errorf("LLM_MODEL is required in config")
 	}
 
 	return nil
@@ -117,7 +112,6 @@ func sendMessage(content string) (string, error) {
 		Content: content,
 	})
 
-	// Create request
 	reqBody := ChatRequest{
 		Model:    config.Model,
 		Messages: messages,
@@ -127,17 +121,14 @@ func sendMessage(content string) (string, error) {
 		return "", fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	// Create HTTP request
 	req, err := http.NewRequest("POST", config.LLMAPIURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %w", err)
 	}
 
-	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.LLMAPIKey))
 
-	// Send request
 	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -145,13 +136,11 @@ func sendMessage(content string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	// Read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("error reading response: %w", err)
 	}
 
-	// Check status code
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("API error: %s (%d)", string(body), resp.StatusCode)
 	}
@@ -188,13 +177,13 @@ func executor(input string) {
 		return
 	}
 
-	// Show thinking indicator
 	fmt.Print("Thinking...")
 
-	// Send message to LLM
 	response, err := sendMessage(input)
+
 	// Clear the thinking indicator
-	fmt.Print("\r          \r")
+	fmt.Print("\r                \r")
+	fmt.Print("\033[K")
 
 	if err != nil {
 		color.Red("Error: %v", err)
@@ -219,12 +208,10 @@ func completer(d prompt.Document) []prompt.Suggest {
 }
 
 func main() {
-	// Print banner
+	// Banner
 	color.Cyan("\n=== Shai - LLM Shell ===\n")
 
-	// Load config
 	if err := loadConfig(); err != nil {
-		// Check if config file doesn't exist
 		if _, statErr := os.Stat(configPath); os.IsNotExist(statErr) {
 			// Create default config directory
 			configDir := filepath.Dir(configPath)
@@ -270,6 +257,8 @@ LLM_MODEL=gpt-4
 		prompt.OptionPrefix("shai> "),
 		prompt.OptionTitle("Shai"),
 		prompt.OptionInputTextColor(prompt.Cyan),
+		prompt.OptionSuggestionBGColor(prompt.DarkGray),
+		// prompt.OptionMultilineCommand([]string{"ctrl+enter", "meta+enter"}),
 	)
 	p.Run()
 }
