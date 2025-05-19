@@ -2,6 +2,10 @@
 
 Shai is a command-line shell interface for chatting with Large Language Models using the OpenAI API format. Simply type your queries and get beautifully formatted responses right in your terminal.
 
+<p align="center">
+  <img src="/assets/demo.gif" alt="Demo" height="550px">
+</p>
+
 ## Features
 
 - Interactive shell for conversing with LLMs
